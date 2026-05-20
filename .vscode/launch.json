@@ -1,0 +1,58 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "k6-debugger: run (with observability)",
+      "runtimeArgs": ["--experimental-loader", "${workspaceFolder}/src/loader.mjs"],
+      "program": "${workspaceFolder}/src/run.mjs",
+      "args": ["${input:script}"],
+      "env": {
+        "K6_DEBUG_TIMELINE": "1",
+        "K6_DEBUG_TIMELINE_PRINT": "1",
+        "K6_DEBUG_TRACE": "1",
+        "K6_DEBUG_TRACE_PRINT": "1",
+        "K6_DEBUG_REPLAY": "record",
+        "DEBUG_NO_SLEEP": "1"
+      },
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "k6-debugger: replay snapshot (mock)",
+      "runtimeArgs": ["--experimental-loader", "${workspaceFolder}/src/loader.mjs"],
+      "program": "${workspaceFolder}/src/run.mjs",
+      "args": ["${input:replayTarget}"],
+      "env": {
+        "K6_DEBUG_REPLAY": "mock",
+        "K6_DEBUG_REPLAY_FILE": "${input:snapshot}",
+        "DEBUG_NO_SLEEP": "1"
+      },
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "script",
+      "type": "promptString",
+      "description": "Path to the k6 script to run",
+      "default": "examples/smoke.js"
+    },
+    {
+      "id": "replayTarget",
+      "type": "promptString",
+      "description": "Path to the original script the snapshot was recorded from",
+      "default": "examples/smoke.js"
+    },
+    {
+      "id": "snapshot",
+      "type": "promptString",
+      "description": "Path to the snapshot JSON",
+      "default": "${workspaceFolder}/.artifacts/snapshot-LATEST.json"
+    }
+  ]
+}

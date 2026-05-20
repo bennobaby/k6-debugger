@@ -1,0 +1,8 @@
+.artifacts/
+.parity/
+test/
+__tests__/
+.github/
+*.log
+.vscode/
+coverage/

@@ -1,0 +1,49 @@
+{
+  "name": "k6-debugger",
+  "version": "0.1.0",
+  "description": "Run k6 scripts under Node.js with native VSCode breakpoints, request timeline, execution tracing, deterministic replay, and runtime parity checks — no k6 binary required.",
+  "type": "module",
+  "bin": {
+    "k6-debugger": "bin/k6-debugger.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs",
+    "./loader": "./src/loader.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "examples",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "smoke": "node bin/k6-debugger.mjs run examples/smoke.js",
+    "lint": "echo \"(no linter configured yet)\""
+  },
+  "engines": {
+    "node": ">=18.19.0"
+  },
+  "keywords": [
+    "k6",
+    "load-testing",
+    "performance-testing",
+    "debugger",
+    "vscode",
+    "tracing",
+    "observability",
+    "replay",
+    "esm-loader"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "bugs": {
+    "url": ""
+  },
+  "homepage": ""
+}
