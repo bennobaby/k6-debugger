@@ -36,14 +36,14 @@
     "replay",
     "esm-loader"
   ],
-  "author": "",
-  "license": "UNLICENSED",
+  "author": "Benno Baby <001bennobaby@gmail.com>",
+  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "git+https://github.com/bennobaby/k6-debugger.git"
   },
   "bugs": {
-    "url": ""
+    "url": "https://github.com/bennobaby/k6-debugger/issues"
   },
-  "homepage": ""
+  "homepage": "https://github.com/bennobaby/k6-debugger#readme"
 }

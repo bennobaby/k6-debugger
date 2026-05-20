@@ -214,6 +214,6 @@ See [src/index.mjs](src/index.mjs) for the full surface.
 
 ## Status & license
 
-Early (`0.1.x`). Interfaces may change. **License: TBD** — see [LICENSE](LICENSE); not yet redistributable until a license is chosen.
+Early (`0.1.x`). Interfaces may change. **License: [MIT](LICENSE).**
 
-Contributions welcome once the license lands. Run the suite with `npm test` (`node --test`).
+Contributions welcome. Run the suite with `npm test` (`node --test`).
