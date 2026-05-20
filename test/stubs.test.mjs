@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import '../src/preload.mjs';
 
+import http from '../src/stubs/k6-http.js';
 import { b64decode, b64encode } from '../src/stubs/k6-encoding.js';
 import { SharedArray } from '../src/stubs/k6-data.js';
 import { group, check, fail, randomSeed, _getRandomSeed } from '../src/stubs/k6.js';
@@ -73,6 +74,25 @@ test('k6: group pops stack even on throw', () => {
 test('k6: randomSeed stored', () => {
   randomSeed(123);
   assert.equal(_getRandomSeed(), 123);
+});
+
+test('k6/http: file() is branded for multipart detection', () => {
+  const f = http.file('hi', 'a.txt', 'text/plain');
+  assert.equal(f.__k6File, true);
+  assert.equal(f.filename, 'a.txt');
+  assert.equal(f.content_type, 'text/plain');
+  assert.equal(f.data, 'hi');
+});
+
+test('k6/http: cookieJar set + cookiesForURL round-trip, no cross-host leak', () => {
+  const jar = http.cookieJar();
+  jar.set('https://ex.test/path', 'sid', 'abc123');
+  assert.equal(jar.cookiesForURL('https://ex.test/path/sub').sid, 'abc123');
+  assert.deepEqual(jar.cookiesForURL('https://other.test/'), {});
+});
+
+test('k6/http: url`` template tag joins values', () => {
+  assert.equal(http.url`https://x/${1}/y/${'z'}`, 'https://x/1/y/z');
 });
 
 test('k6/metrics: stubs accept add() without throw', () => {

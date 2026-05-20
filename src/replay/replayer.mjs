@@ -19,7 +19,8 @@ export class ReplayIndex {
     const bucket = this.byKey.get(key);
     if (!bucket || !bucket.length) return null;
     const i = this.cursor.get(key) || 0;
-    this.cursor.set(key, Math.min(i + 1, bucket.length - 1));
+    if (i >= bucket.length) return null; // exhausted — treat as a miss, don't replay stale record
+    this.cursor.set(key, i + 1);
     return bucket[i];
   }
 }

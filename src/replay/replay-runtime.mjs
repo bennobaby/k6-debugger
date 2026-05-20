@@ -21,3 +21,8 @@ if (config.features.replay === 'live') {
 console.log(`[k6-debugger] replay mode=${config.features.replay} requests=${snapshot.requests?.length ?? 0} file=${config.replayFile}`);
 
 export const curlRequest = makeReplayCurl({ index, mode: config.features.replay, liveFallback });
+
+// k6-http imports these from the curl-client module, which the loader swaps for
+// this one during replay. Re-export the real (side-effect-free) helpers so those
+// named imports resolve. `?real=1` bypasses the loader's replay redirect.
+export { FILE_BRAND, setCookie, cookiesForURL, cookieJarPath } from '../lib/curl-client.mjs?real=1';

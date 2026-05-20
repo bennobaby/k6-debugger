@@ -5,9 +5,10 @@
       "type": "node",
       "request": "launch",
       "name": "k6-debugger: run (with observability)",
-      "runtimeArgs": ["--experimental-loader", "${workspaceFolder}/src/loader.mjs"],
+      "runtimeArgs": ["--import", "./src/register.mjs"],
       "program": "${workspaceFolder}/src/run.mjs",
       "args": ["${input:script}"],
+      "cwd": "${workspaceFolder}",
       "env": {
         "K6_DEBUG_TIMELINE": "1",
         "K6_DEBUG_TIMELINE_PRINT": "1",
@@ -23,9 +24,10 @@
       "type": "node",
       "request": "launch",
       "name": "k6-debugger: replay snapshot (mock)",
-      "runtimeArgs": ["--experimental-loader", "${workspaceFolder}/src/loader.mjs"],
+      "runtimeArgs": ["--import", "./src/register.mjs"],
       "program": "${workspaceFolder}/src/run.mjs",
       "args": ["${input:replayTarget}"],
+      "cwd": "${workspaceFolder}",
       "env": {
         "K6_DEBUG_REPLAY": "mock",
         "K6_DEBUG_REPLAY_FILE": "${input:snapshot}",

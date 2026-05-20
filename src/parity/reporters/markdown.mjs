@@ -1,10 +1,10 @@
-const ICON = { ok: '✅', warn: '⚠️', fail: '❌' };
+const ICON = { ok: '✅', warn: '⚠️', fail: '❌', skip: '⏭️' };
 
 export function renderMarkdown({ findings, counts, verdict }) {
   const lines = [];
   lines.push('# k6-debugger Parity Report');
   lines.push('');
-  lines.push(`**Verdict:** \`${verdict}\` — ok=${counts.ok} warn=${counts.warn} fail=${counts.fail}`);
+  lines.push(`**Verdict:** \`${verdict}\` — ok=${counts.ok} warn=${counts.warn} fail=${counts.fail} skip=${counts.skip ?? 0}`);
   lines.push('');
   lines.push('| Level | Area | Message |');
   lines.push('|-------|------|---------|');

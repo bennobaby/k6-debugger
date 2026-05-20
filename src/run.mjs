@@ -102,6 +102,15 @@ async function bootstrapObservability() {
       try { await f(); } catch (e) { console.warn('[k6-debugger] flush error:', e.message); }
     }
   }
+  // beforeExit can run async work (file writes + OTLP export); signals let a
+  // long run flush on Ctrl-C. 'exit' is a sync-only last resort.
+  process.once('beforeExit', () => { flushAll(); });
+  for (const sig of ['SIGINT', 'SIGTERM']) {
+    process.once(sig, async () => {
+      await flushAll();
+      process.exit(sig === 'SIGINT' ? 130 : 143);
+    });
+  }
   process.on('exit', () => {
     if (flushed) return;
     flushed = true;

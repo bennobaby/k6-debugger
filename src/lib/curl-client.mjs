@@ -24,19 +24,143 @@ function headerArgs(headers) {
   return args;
 }
 
-function resolveTimeoutSeconds(params) {
-  const raw = params?.timeout ?? config.defaultTimeoutMs;
-  const ms = typeof raw === 'string' ? parseInt(raw, 10) : raw;
-  if (!Number.isFinite(ms) || ms <= 0) return null;
-  return Math.ceil(ms / 1000);
+const DURATION_UNITS = { ms: 1, s: 1000, m: 60000, h: 3600000 };
+
+// Parse a k6 timeout: number (ms) or duration string ("30s", "1m30s", "100ms").
+function parseDurationMs(raw) {
+  if (typeof raw === 'number') return raw;
+  if (typeof raw !== 'string') return NaN;
+  const s = raw.trim();
+  if (s === '') return NaN;
+  if (/^\d+(\.\d+)?$/.test(s)) return parseFloat(s); // bare number => milliseconds
+  const re = /(\d+(?:\.\d+)?)(ms|s|m|h)/g;
+  let m;
+  let total = 0;
+  let matched = false;
+  while ((m = re.exec(s)) !== null) {
+    matched = true;
+    total += parseFloat(m[1]) * DURATION_UNITS[m[2]];
+  }
+  return matched ? total : NaN;
 }
 
-function writeRequestBody(body) {
-  if (body == null || body === '') return null;
-  const text = typeof body === 'string' ? body : JSON.stringify(body);
+function resolveTimeoutSeconds(params) {
+  const raw = params?.timeout ?? config.defaultTimeoutMs;
+  const ms = parseDurationMs(raw);
+  if (!Number.isFinite(ms) || ms <= 0) return null;
+  return ms / 1000; // fractional seconds — curl --max-time accepts decimals
+}
+
+// Brand set by http.file() so an object body can be detected as a multipart upload.
+export const FILE_BRAND = '__k6File';
+function isFileField(v) {
+  return v != null && typeof v === 'object' && v[FILE_BRAND] === true;
+}
+
+function fileBytes(data) {
+  if (data == null) return Buffer.alloc(0);
+  if (typeof data === 'string') return Buffer.from(data, 'utf8');
+  if (Buffer.isBuffer(data)) return data;
+  if (data instanceof ArrayBuffer) return Buffer.from(new Uint8Array(data));
+  if (ArrayBuffer.isView(data)) return Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+  return Buffer.from(String(data), 'utf8');
+}
+
+// Build curl body args the way k6 encodes a request body:
+//   string                       -> sent as-is
+//   object with http.file fields -> multipart/form-data (-F)
+//   plain object                 -> application/x-www-form-urlencoded
+// Returns curl args, the default Content-Type (or null), and temp files to clean up.
+function buildBodyArgs(body) {
+  if (body == null || body === '') return { args: [], contentType: null, files: [] };
+
+  if (typeof body === 'string') {
+    const file = tmpFile('req');
+    fs.writeFileSync(file, body);
+    return { args: ['--data-binary', `@${file}`], contentType: null, files: [file] };
+  }
+
+  if (typeof body === 'object') {
+    const entries = Object.entries(body);
+    if (entries.some(([, v]) => isFileField(v))) {
+      const args = [];
+      const files = [];
+      for (const [k, v] of entries) {
+        if (isFileField(v)) {
+          const tmp = tmpFile('upload');
+          fs.writeFileSync(tmp, fileBytes(v.data));
+          files.push(tmp);
+          let spec = `${k}=@${tmp}`;
+          if (v.content_type) spec += `;type=${v.content_type}`;
+          if (v.filename) spec += `;filename=${v.filename}`;
+          args.push('-F', spec);
+        } else {
+          args.push('-F', `${k}=${v == null ? '' : String(v)}`);
+        }
+      }
+      // curl sets multipart/form-data with its own boundary — leave Content-Type unset.
+      return { args, contentType: null, files };
+    }
+
+    const usp = new URLSearchParams();
+    for (const [k, v] of entries) usp.append(k, v == null ? '' : String(v));
+    const file = tmpFile('req');
+    fs.writeFileSync(file, usp.toString());
+    return { args: ['--data-binary', `@${file}`], contentType: 'application/x-www-form-urlencoded', files: [file] };
+  }
+
   const file = tmpFile('req');
-  fs.writeFileSync(file, text);
-  return file;
+  fs.writeFileSync(file, String(body));
+  return { args: ['--data-binary', `@${file}`], contentType: null, files: [file] };
+}
+
+function hasHeader(headers, name) {
+  const lower = name.toLowerCase();
+  return Object.keys(headers || {}).some((k) => k.toLowerCase() === lower);
+}
+
+// One Netscape cookie jar shared across every request in this process so server
+// Set-Cookie persists to later requests (login -> authenticated calls), like k6.
+let cookieJarFile = null;
+export function cookieJarPath() {
+  if (!cookieJarFile) {
+    cookieJarFile = tmpFile('cookies');
+    try { fs.writeFileSync(cookieJarFile, '# Netscape HTTP Cookie File\n'); } catch {}
+    process.on('exit', () => { try { fs.unlinkSync(cookieJarFile); } catch {} });
+  }
+  return cookieJarFile;
+}
+
+// Manual cookie control backing http.cookieJar(). Writes Netscape lines curl reads.
+export function setCookie(url, name, value, opts = {}) {
+  let host = '';
+  let secure = false;
+  try { const u = new URL(url); host = u.hostname; secure = u.protocol === 'https:'; } catch {}
+  const domain = opts.domain || host;
+  if (!domain || !name) return;
+  const expiry = opts.expires ? Math.floor(new Date(opts.expires).getTime() / 1000) : 0;
+  const line = [domain, 'FALSE', opts.path || '/', secure ? 'TRUE' : 'FALSE', expiry, name, value ?? ''].join('\t');
+  try { fs.appendFileSync(cookieJarPath(), line + '\n'); } catch {}
+}
+
+export function cookiesForURL(url) {
+  let host = '';
+  let path = '/';
+  try { const u = new URL(url); host = u.hostname; path = u.pathname || '/'; } catch {}
+  const out = {};
+  let raw = '';
+  try { raw = fs.readFileSync(cookieJarPath(), 'utf8'); } catch { return out; }
+  for (const line of raw.split('\n')) {
+    if (!line || (line.startsWith('#') && !line.startsWith('#HttpOnly_'))) continue;
+    const parts = line.replace(/^#HttpOnly_/, '').split('\t');
+    if (parts.length < 7) continue;
+    const [cdomain, , cpath, , , cname, cvalue] = parts;
+    const bare = cdomain.replace(/^\./, '');
+    if ((host === bare || host.endsWith('.' + bare)) && path.startsWith(cpath || '/')) {
+      out[cname] = cvalue;
+    }
+  }
+  return out;
 }
 
 function safeRead(file) {
@@ -93,22 +217,47 @@ export function curlRequest(method, url, body, params = {}) {
     headers: params.headers || {}, body, ts: start,
   });
 
+  const upperMethod = method.toUpperCase();
   const headerFile = tmpFile('hdr');
   const bodyFile = tmpFile('body');
-  const requestBodyFile = writeRequestBody(body);
+  const jar = cookieJarPath();
+  const { args: bodyArgs, contentType, files: bodyFiles } = buildBodyArgs(body);
 
   const args = [
     '-sS',
+    '--compressed',     // request + transparently decompress gzip/deflate, like k6
+    '-b', jar, '-c', jar, // share cookies across requests, like k6's cookie jar
     '-o', bodyFile,
     '-D', headerFile,
     '-w', TIMING_FMT,
-    '-X', method.toUpperCase(),
-    ...headerArgs(params.headers),
   ];
+
+  // HEAD must use --head; `-X HEAD` makes curl wait for a body the server never
+  // sends, hanging until --max-time. With --head the headers still go to -D.
+  if (upperMethod === 'HEAD') {
+    args.push('--head');
+  } else {
+    args.push('-X', upperMethod);
+  }
+
+  // Follow redirects like k6 (default 10); params.redirects can lower or disable.
+  const maxRedirects = params.redirects != null ? Number(params.redirects) : config.maxRedirects;
+  if (Number.isFinite(maxRedirects) && maxRedirects > 0) {
+    args.push('-L', '--max-redirs', String(maxRedirects));
+  }
+
+  if (params.insecureSkipTLSVerify || config.insecureTLS) args.push('-k');
+
+  args.push(...headerArgs(params.headers));
+
+  // Apply k6's default Content-Type for object bodies unless the caller set one.
+  if (contentType && !hasHeader(params.headers, 'content-type')) {
+    args.push('-H', `Content-Type: ${contentType}`);
+  }
 
   const timeoutSec = resolveTimeoutSeconds(params);
   if (timeoutSec) args.push('--max-time', String(timeoutSec));
-  if (requestBodyFile) args.push('--data-binary', `@${requestBodyFile}`);
+  args.push(...bodyArgs);
   args.push(url);
 
   let status = 0;
@@ -130,18 +279,19 @@ export function curlRequest(method, url, body, params = {}) {
   }
 
   const durationMs = Date.now() - start;
-  const bodyText = safeRead(bodyFile);
+  // --head writes the header block to -o; a HEAD response has no body in k6.
+  const bodyText = upperMethod === 'HEAD' ? '' : safeRead(bodyFile);
   const headerText = safeRead(headerFile);
   const { headers } = parseHeaderBlock(headerText);
 
   safeUnlink(bodyFile);
   safeUnlink(headerFile);
-  safeUnlink(requestBodyFile);
+  for (const f of bodyFiles) safeUnlink(f);
 
   bus.emit(EVENTS.HTTP_TIMING, { requestId, ...timings, redirects, bytes, ts: Date.now() });
 
   if (config.logHttp) {
-    console.log(`  [HTTP] ${method.toUpperCase()} ${url} -> ${status} (${durationMs}ms)`);
+    console.log(`  [HTTP] ${upperMethod} ${url} -> ${status} (${durationMs}ms)`);
   }
 
   const response = buildResponse({

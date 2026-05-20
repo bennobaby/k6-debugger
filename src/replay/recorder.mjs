@@ -70,7 +70,7 @@ export function attach(bus, mode) {
       error: e.error || null,
       errorCode: e.errorCode || 0,
       body: truncate(e.responseBody || '', config.bodyTruncateBytes),
-      headers: e.responseHeaders || {},
+      headers: redactHeaders(e.responseHeaders),
       endTs: e.ts,
     };
   });

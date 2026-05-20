@@ -11,15 +11,31 @@ export function group(name, fn) {
   console.log(`${indent}▶ group: ${name}`);
   const start = Date.now();
   bus.emit(EVENTS.SPAN_START, { spanId, parent, kind: 'group', name, ts: start });
-  try {
-    return fn();
-  } finally {
+
+  const finish = () => {
     const end = Date.now();
     const ms = end - start;
     console.log(`${indent}◀ group end: ${name} (${ms}ms)`);
     bus.emit(EVENTS.SPAN_END, { spanId, ts: end, durationMs: ms });
     groupStack.pop();
+  };
+
+  let result;
+  try {
+    result = fn();
+  } catch (e) {
+    finish();
+    throw e;
   }
+  // Defer span-end until an async body settles so timing/nesting stay accurate.
+  if (result && typeof result.then === 'function') {
+    return result.then(
+      (v) => { finish(); return v; },
+      (e) => { finish(); throw e; },
+    );
+  }
+  finish();
+  return result;
 }
 
 export function sleep(seconds) {
@@ -56,6 +72,21 @@ export function fail(message) {
   throw new Error(`k6 fail(): ${message ?? ''}`);
 }
 
+// Seeded PRNG so randomSeed() makes Math.random() deterministic across runs,
+// matching k6's randomSeed() behavior (needed for deterministic replay).
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function next() {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 let _seed = null;
-export function randomSeed(s) { _seed = s; }
+export function randomSeed(s) {
+  _seed = Number(s) >>> 0;
+  Math.random = mulberry32(_seed);
+}
 export function _getRandomSeed() { return _seed; }

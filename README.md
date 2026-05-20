@@ -195,8 +195,10 @@ node --experimental-loader src/loader.mjs  src/run.mjs  your-script.js
 ### Supported k6 surface
 `k6` (`group`, `check`, `sleep`, `fail`, `randomSeed`), `k6/http` (all verbs + `batch`), `k6/encoding`, `k6/data` (`SharedArray`), `k6/metrics` (stubs), `k6/execution`. `__ENV` and `open()` are globals.
 
+HTTP fidelity (via `curl`): follows redirects (default 10, `params.redirects` to override), a per-run cookie jar shared across requests (`http.cookieJar()` works), `multipart/form-data` uploads via `http.file()`, automatic gzip/deflate, form-urlencoded object bodies, and TLS-verify skip (`params.insecureSkipTLSVerify` or `K6_DEBUG_INSECURE=1`).
+
 ### Not (yet) supported
-WebSockets, gRPC, `k6/crypto` extras, real metrics aggregation, multi-VU/scenario execution. These are out of scope — k6-debugger debugs logic and HTTP, not load.
+WebSockets, gRPC, `k6/crypto` extras, real metrics aggregation, multi-VU/scenario execution, and `export const options` (stages/thresholds/scenarios are ignored — one iteration, single VU). These are out of scope — k6-debugger debugs logic and HTTP, not load.
 
 ---
 

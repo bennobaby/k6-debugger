@@ -1,5 +1,5 @@
-const ICON = { ok: '✔', warn: '⚠', fail: '✖' };
-const RANK = { ok: 0, warn: 1, fail: 2 };
+const ICON = { ok: '✔', warn: '⚠', fail: '✖', skip: '⏭' };
+const RANK = { skip: -1, ok: 0, warn: 1, fail: 2 };
 
 export function renderConsole({ findings, counts, verdict }) {
   const out = ['── parity report ──'];
@@ -16,6 +16,6 @@ export function renderConsole({ findings, counts, verdict }) {
       out.push(`   ${ICON[f.level]} ${f.msg}`);
     }
   }
-  out.push(`── verdict: ${verdict}  ok=${counts.ok} warn=${counts.warn} fail=${counts.fail}`);
+  out.push(`── verdict: ${verdict}  ok=${counts.ok} warn=${counts.warn} fail=${counts.fail} skip=${counts.skip ?? 0}`);
   return out.join('\n');
 }

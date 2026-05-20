@@ -58,7 +58,7 @@ test('tracing: buildTree + ascii + mermaid', () => {
   assert.match(toMermaid([root]), /graph TD/);
 });
 
-test('replay index: FIFO per key then sticks on last', () => {
+test('replay index: FIFO per key then misses when exhausted', () => {
   const snap = makeSnapshot({
     requests: [
       { method: 'GET', url: 'http://a', response: { status: 1 } },
@@ -69,7 +69,7 @@ test('replay index: FIFO per key then sticks on last', () => {
   const idx = new ReplayIndex(snap);
   assert.equal(idx.next('GET', 'http://a').response.status, 1);
   assert.equal(idx.next('GET', 'http://a').response.status, 2);
-  assert.equal(idx.next('GET', 'http://a').response.status, 2, 'sticks on last');
+  assert.equal(idx.next('GET', 'http://a'), null, 'exhausted -> miss, no stale replay');
   assert.equal(idx.next('GET', 'http://missing'), null);
 });
 

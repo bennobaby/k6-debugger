@@ -11,7 +11,7 @@ import { renderJson } from './reporters/json.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const RUN = path.resolve(HERE, '..', 'run.mjs');
-const LOADER_URL = pathToFileURL(path.resolve(HERE, '..', 'loader.mjs')).href;
+const REGISTER_URL = pathToFileURL(path.resolve(HERE, '..', 'register.mjs')).href;
 
 function k6Available() {
   const r = spawnSync('k6', ['version'], { encoding: 'utf8' });
@@ -26,7 +26,7 @@ export async function runParity({ script, tolerances = {}, outDir, env = {} }) {
   fs.mkdirSync(k6Dir, { recursive: true });
 
   console.log('[parity] running k6-debugger ...');
-  spawnSync(process.execPath, ['--experimental-loader', LOADER_URL, RUN, script], {
+  spawnSync(process.execPath, ['--import', REGISTER_URL, RUN, script], {
     stdio: 'inherit',
     env: {
       ...process.env,

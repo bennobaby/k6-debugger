@@ -31,7 +31,15 @@ export const config = Object.freeze({
   setupModule: process.env.K6_DEBUG_SETUP || null,
 
   curlMaxBuffer: parseInt(process.env.K6_DEBUG_CURL_MAX_BUFFER, 10) || 64 * 1024 * 1024,
-  defaultTimeoutMs: parseInt(process.env.K6_DEBUG_DEFAULT_TIMEOUT_MS, 10) || 30000,
+  defaultTimeoutMs: parseInt(process.env.K6_DEBUG_DEFAULT_TIMEOUT_MS, 10) || 60000,
+
+  // k6 follows redirects by default (max 10). Override per-request via params.redirects.
+  maxRedirects: Number.isFinite(parseInt(process.env.K6_DEBUG_MAX_REDIRECTS, 10))
+    ? parseInt(process.env.K6_DEBUG_MAX_REDIRECTS, 10)
+    : 10,
+  // Skip TLS verification (self-signed / internal hosts). Mirrors k6's
+  // insecureSkipTLSVerify option / K6_INSECURE_SKIP_TLS_VERIFY env.
+  insecureTLS: flag('K6_DEBUG_INSECURE') || flag('K6_INSECURE_SKIP_TLS_VERIFY'),
 
   outDir: path.resolve(process.cwd(), process.env.K6_DEBUG_OUT || '.artifacts'),
 

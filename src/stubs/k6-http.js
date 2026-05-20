@@ -1,4 +1,4 @@
-import { curlRequest } from '../lib/curl-client.mjs';
+import { curlRequest, FILE_BRAND, setCookie, cookiesForURL } from '../lib/curl-client.mjs';
 
 const http = {
   request: curlRequest,
@@ -19,9 +19,14 @@ const http = {
   }),
   setResponseCallback: () => {},
   expectedStatuses: (...ranges) => ({ _expected: ranges }),
-  file: (data, filename, contentType) => ({ data, filename, content_type: contentType }),
+  file: (data, filename, contentType) => ({ [FILE_BRAND]: true, data, filename, content_type: contentType }),
   url: (strings, ...values) => strings.reduce((acc, s, i) => acc + s + (i < values.length ? String(values[i]) : ''), ''),
-  cookieJar: () => ({ set: () => {}, cookiesForURL: () => ({}) }),
+  cookieJar: () => ({
+    set: (url, name, value, opts) => setCookie(url, name, value, opts),
+    cookiesForURL: (url) => cookiesForURL(url),
+    clear: () => {},
+    delete: () => {},
+  }),
 };
 
 export default http;

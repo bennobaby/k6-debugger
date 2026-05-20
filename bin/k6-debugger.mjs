@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(HERE, '..', 'src');
 const RUN = path.join(SRC, 'run.mjs');
-const LOADER_URL = pathToFileURL(path.join(SRC, 'loader.mjs')).href;
+const REGISTER_URL = pathToFileURL(path.join(SRC, 'register.mjs')).href;
 
 function readPkgVersion() {
   try {
@@ -50,17 +50,31 @@ parity options:
 Environment variables mirror every flag (AUTH_TOKEN, K6_DEBUG_*). See README.
 `;
 
+// Flags that consume the following token as their value. Everything else is
+// boolean, so a positional (e.g. the script path) is never swallowed by a flag.
+const VALUE_FLAGS = new Set(['otlp', 'out', 'setup', 'mode']);
+
 function parseFlags(args) {
   const flags = {};
   const positionals = [];
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a.startsWith('--')) {
-      const key = a.slice(2);
-      const next = args[i + 1];
-      if (next !== undefined && !next.startsWith('--')) {
-        flags[key] = next;
-        i++;
+      let key = a.slice(2);
+      // Support --key=value form.
+      const eq = key.indexOf('=');
+      if (eq !== -1) {
+        flags[key.slice(0, eq)] = key.slice(eq + 1);
+        continue;
+      }
+      if (VALUE_FLAGS.has(key)) {
+        const next = args[i + 1];
+        if (next !== undefined && !next.startsWith('--')) {
+          flags[key] = next;
+          i++;
+        } else {
+          flags[key] = true;
+        }
       } else {
         flags[key] = true;
       }
@@ -101,7 +115,7 @@ function cmdRun(args) {
   const { flags, positionals } = parseFlags(args);
   const script = requireScript(positionals, 'script path');
   const env = runEnvFromFlags(flags);
-  const r = spawnSync(process.execPath, ['--experimental-loader', LOADER_URL, RUN, script], {
+  const r = spawnSync(process.execPath, ['--import', REGISTER_URL, RUN, script], {
     stdio: 'inherit',
     env,
   });
@@ -139,7 +153,7 @@ function cmdReplay(args) {
     if (env[k] == null) env[k] = v;
   }
 
-  const r = spawnSync(process.execPath, ['--experimental-loader', LOADER_URL, RUN, target], {
+  const r = spawnSync(process.execPath, ['--import', REGISTER_URL, RUN, target], {
     stdio: 'inherit',
     env,
   });
