@@ -104,7 +104,7 @@ async function bootstrapObservability() {
   }
   // beforeExit can run async work (file writes + OTLP export); signals let a
   // long run flush on Ctrl-C. 'exit' is a sync-only last resort.
-  process.once('beforeExit', () => { flushAll(); });
+  process.once('beforeExit', flushAll);
   for (const sig of ['SIGINT', 'SIGTERM']) {
     process.once(sig, async () => {
       await flushAll();

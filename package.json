@@ -20,7 +20,8 @@
   "scripts": {
     "test": "node --test",
     "smoke": "node bin/k6-debugger.mjs run examples/smoke.js",
-    "lint": "echo \"(no linter configured yet)\""
+    "lint": "echo \"(no linter configured yet)\"",
+    "prepublishOnly": "npm test"
   },
   "engines": {
     "node": ">=18.19.0"
