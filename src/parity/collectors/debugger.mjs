@@ -1,18 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-
-function readJsonl(file) {
-  if (!fs.existsSync(file)) return [];
-  return fs.readFileSync(file, 'utf8')
-    .split('\n').filter(Boolean).map((l) => {
-      try { return JSON.parse(l); } catch { return null; }
-    }).filter(Boolean);
-}
-
-function readJson(file, fallback) {
-  if (!fs.existsSync(file)) return fallback;
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
-}
+import { readJsonl, readJson } from '../io.mjs';
 
 function buildGroupTree(snapshotSpans) {
   if (!snapshotSpans) return [];

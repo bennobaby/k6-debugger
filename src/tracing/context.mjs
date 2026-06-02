@@ -7,5 +7,3 @@ export function currentSpanId() {
 export function pushSpan(id) { stack.push(id); }
 
 export function popSpan() { return stack.pop(); }
-
-export function depth() { return stack.length; }

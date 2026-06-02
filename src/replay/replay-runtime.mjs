@@ -25,4 +25,4 @@ export const curlRequest = makeReplayCurl({ index, mode: config.features.replay,
 // k6-http imports these from the curl-client module, which the loader swaps for
 // this one during replay. Re-export the real (side-effect-free) helpers so those
 // named imports resolve. `?real=1` bypasses the loader's replay redirect.
-export { FILE_BRAND, setCookie, cookiesForURL, cookieJarPath } from '../lib/curl-client.mjs?real=1';
+export { FILE_BRAND, setCookie, cookiesForURL } from '../lib/curl-client.mjs?real=1';
