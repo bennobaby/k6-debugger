@@ -1,5 +1,10 @@
 # k6-debugger
 
+[![npm version](https://img.shields.io/npm/v/k6-debugger.svg)](https://www.npmjs.com/package/k6-debugger)
+[![CI](https://github.com/bennobaby/k6-debugger/actions/workflows/ci.yml/badge.svg)](https://github.com/bennobaby/k6-debugger/actions/workflows/ci.yml)
+[![npm downloads](https://img.shields.io/npm/dm/k6-debugger.svg)](https://www.npmjs.com/package/k6-debugger)
+[![license: MIT](https://img.shields.io/npm/l/k6-debugger.svg)](LICENSE)
+
 **Run [k6](https://k6.io) load-test scripts under Node.js — with native VSCode breakpoints, a request timeline, execution tracing, deterministic replay, and runtime parity checks. No k6 binary required.**
 
 k6 runs your scripts in a Go-embedded JavaScript runtime (goja) that can't be attached to a JavaScript debugger. That makes stepping through a failing script painful. **k6-debugger** loads the *same, unmodified* script under Node.js, transparently swapping `k6`/`k6/http`/etc. imports for compatible stubs and executing real HTTP via the system `curl`. Your script doesn't change; you get real breakpoints plus observability the k6 binary doesn't expose.
