@@ -11,6 +11,7 @@ import execDefault, { vu, scenario, instance, test as k6test } from '../dist/stu
 import { parseHeaderBlock } from '../dist/lib/headers.js';
 import { buildResponse } from '../dist/lib/response.js';
 import { config } from '../dist/lib/config.js';
+import { curlRequest } from '../dist/lib/curl-client.js';
 
 test('k6/encoding: b64decode std', () => {
   assert.equal(b64decode('aGVsbG8='), 'hello');
@@ -74,6 +75,13 @@ test('k6: group pops stack even on throw', () => {
 test('k6: randomSeed stored', () => {
   randomSeed(123);
   assert.equal(_getRandomSeed(), 123);
+});
+
+test('curl refuses flag-like and non-http targets', () => {
+  assert.throws(() => curlRequest('GET', '-o/tmp/x', null, {}), /refused url/);
+  assert.throws(() => curlRequest('GET', 'file:///etc/passwd', null, {}), /refused url/);
+  assert.throws(() => curlRequest('-X', 'https://example.test/', null, {}), /refused method/);
+  assert.throws(() => curlRequest('GET', 'https://example.test/', null, { headers: { 'X\nY': '1' } }), /refused header/);
 });
 
 test('k6/http: file() is branded for multipart detection', () => {

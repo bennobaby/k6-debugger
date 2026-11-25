@@ -7,12 +7,18 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    # id-token: write is required for npm provenance attestation.
     permissions:
       contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Refuse tags that are not on master
+        run: |
+          git fetch origin master
+          git merge-base --is-ancestor HEAD origin/master
       - uses: actions/setup-node@v4
         with:
           node-version: 20

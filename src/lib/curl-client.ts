@@ -16,10 +16,30 @@ function tmpFile(prefix) {
   return path.join(os.tmpdir(), `${prefix}-${crypto.randomBytes(6).toString('hex')}`);
 }
 
+function assertHttpTarget(method, url) {
+  if (typeof method !== 'string' || !/^[A-Za-z]+$/.test(method)) {
+    throw new Error('k6-debugger: refused method');
+  }
+  let parsed;
+  try { parsed = new URL(url); } catch {
+    throw new Error('k6-debugger: refused url');
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('k6-debugger: refused url');
+  }
+}
+
 function headerArgs(headers) {
   const args = [];
   for (const [k, v] of Object.entries(headers || {})) {
-    args.push('-H', `${k}: ${v}`);
+    if (!/^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/.test(k)) {
+      throw new Error('k6-debugger: refused header name');
+    }
+    const value = v == null ? '' : String(v);
+    if (/[\r\n\0]/.test(value)) {
+      throw new Error('k6-debugger: refused header value');
+    }
+    args.push('-H', `${k}: ${value}`);
   }
   return args;
 }
@@ -79,7 +99,11 @@ function buildBodyArgs(body) {
       const args = [];
       const files = [];
       for (const [k, v] of entries) {
+        if (/[\r\n\0=]/.test(k)) throw new Error('k6-debugger: refused form field');
         if (isFileField(v)) {
+          if (/[\r\n\0;]/.test(String(v.filename ?? '')) || /[\r\n\0;]/.test(String(v.content_type ?? ''))) {
+            throw new Error('k6-debugger: refused upload metadata');
+          }
           const tmp = tmpFile('upload');
           fs.writeFileSync(tmp, fileBytes(v.data));
           files.push(tmp);
@@ -88,7 +112,9 @@ function buildBodyArgs(body) {
           if (v.filename) spec += `;filename=${v.filename}`;
           args.push('-F', spec);
         } else {
-          args.push('-F', `${k}=${v == null ? '' : String(v)}`);
+          const text = v == null ? '' : String(v);
+          if (/[\r\n\0]/.test(text)) throw new Error('k6-debugger: refused form field');
+          args.push('-F', `${k}=${text}`);
         }
       }
 
@@ -129,6 +155,8 @@ export function setCookie(url, name, value, opts = {}) {
   const domain = opts.domain || host;
   if (!domain || !name) return;
   const expiry = opts.expires ? Math.floor(new Date(opts.expires).getTime() / 1000) : 0;
+  const fields = [domain, opts.path || '/', name, value ?? ''];
+  if (fields.some((part) => /[\r\n\t\0]/.test(String(part)))) return;
   const line = [domain, 'FALSE', opts.path || '/', secure ? 'TRUE' : 'FALSE', expiry, name, value ?? ''].join('\t');
   try { fs.appendFileSync(cookieJarPath(), line + '\n'); } catch {}
 }
@@ -200,6 +228,7 @@ function parseTimingStdout(stdout) {
 }
 
 export function curlRequest(method, url, body, params = {}) {
+  assertHttpTarget(method, url);
   const start = Date.now();
   const requestId = bus.newId('req');
   bus.emit(EVENTS.HTTP_START, {
@@ -244,7 +273,7 @@ export function curlRequest(method, url, body, params = {}) {
   const timeoutSec = resolveTimeoutSeconds(params);
   if (timeoutSec) args.push('--max-time', String(timeoutSec));
   args.push(...bodyArgs);
-  args.push(url);
+  args.push('--', url);
 
   let status = 0;
   let error = '';
