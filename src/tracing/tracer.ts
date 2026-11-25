@@ -1,10 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { config } from '../lib/config.mjs';
-import { EVENTS } from '../lib/obs-bus.mjs';
-import { Span } from './spans.mjs';
-import { pushSpan, popSpan, currentSpanId } from './context.mjs';
-import { buildTree, toAscii, toMermaid } from './graph-builder.mjs';
+import { config } from '../lib/config.js';
+import { EVENTS } from '../lib/obs-bus.js';
+import { Span } from './spans.js';
+import { pushSpan, popSpan, currentSpanId } from './context.js';
+import { buildTree, toAscii, toMermaid } from './graph-builder.js';
 
 function shortUrl(u) {
   try { return new URL(u).pathname; } catch { return u; }
@@ -14,8 +14,6 @@ export function attach(bus) {
   const spans = new Map();
   const roots = [];
 
-  // Exposed for live inspection while paused at a breakpoint:
-  //   globalThis.__trace.dump()
   globalThis.__trace = { spans, roots, dump: () => console.log(toAscii(roots)) };
 
   bus.on(EVENTS.SPAN_START, (e) => {
@@ -83,7 +81,7 @@ export function attach(bus) {
       fs.writeFileSync(path.join(config.outDir, 'trace.mmd'), toMermaid(roots));
     }
     if (process.env.K6_DEBUG_TRACE_OTLP) {
-      const { exportOtlp } = await import('./exporters/otlp.mjs');
+      const { exportOtlp } = await import('./exporters/otlp.js');
       try {
         await exportOtlp(tree, process.env.K6_DEBUG_TRACE_OTLP, bus.sessionId);
       } catch (e) {

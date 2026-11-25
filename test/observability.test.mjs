@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { bus, EVENTS } from '../src/lib/obs-bus.mjs';
-import { TimelineStore } from '../src/timeline/storage.mjs';
-import { formatWaterfall, toDevtoolsJson } from '../src/timeline/formatter.mjs';
-import { Span } from '../src/tracing/spans.mjs';
-import { buildTree, toAscii, toMermaid } from '../src/tracing/graph-builder.mjs';
-import { ReplayIndex, makeReplayCurl } from '../src/replay/replayer.mjs';
-import { makeSnapshot, SNAPSHOT_VERSION } from '../src/replay/schema.mjs';
-import { normalizeHeaders, bodyShape } from '../src/parity/normalize.mjs';
-import { compareRuns } from '../src/parity/compare.mjs';
+import { bus, EVENTS } from '../dist/lib/obs-bus.js';
+import { TimelineStore } from '../dist/timeline/storage.js';
+import { formatWaterfall, toDevtoolsJson } from '../dist/timeline/formatter.js';
+import { Span } from '../dist/tracing/spans.js';
+import { buildTree, toAscii, toMermaid } from '../dist/tracing/graph-builder.js';
+import { ReplayIndex, makeReplayCurl } from '../dist/replay/replayer.js';
+import { makeSnapshot, SNAPSHOT_VERSION } from '../dist/replay/schema.js';
+import { normalizeHeaders, bodyShape } from '../dist/parity/normalize.js';
+import { compareRuns } from '../dist/parity/compare.js';
 
 test('obs-bus: newId is unique + prefixed', () => {
   const a = bus.newId('req');

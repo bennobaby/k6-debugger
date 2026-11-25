@@ -1,8 +1,6 @@
 import path from 'node:path';
-import { readJsonl, readJson } from '../io.mjs';
+import { readJsonl, readJson } from '../io.js';
 
-// k6 JSON output (--out json=) emits Point/Metric records.
-// Reconstruct per-request rows from http_req_* metrics correlated by iter/vu/url.
 function reconstructRequests(points) {
   const byKey = new Map();
   for (const p of points) {

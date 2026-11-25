@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { readJsonl, readJson } from '../io.mjs';
+import { readJsonl, readJson } from '../io.js';
 
 function buildGroupTree(snapshotSpans) {
   if (!snapshotSpans) return [];

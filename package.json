@@ -7,24 +7,42 @@
     "k6-debugger": "bin/k6-debugger.mjs"
   },
   "exports": {
-    ".": "./src/index.mjs",
-    "./loader": "./src/loader.mjs"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./loader": {
+      "types": "./dist/loader.d.ts",
+      "default": "./dist/loader.js"
+    }
   },
+  "types": "./dist/index.d.ts",
   "files": [
     "bin",
-    "src",
+    "dist",
     "examples",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
+    "build": "tsc --noCheck",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "prebuild": "npm run clean",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "pretest": "npm run build",
     "test": "node --test",
+    "presmoke": "npm run build",
     "smoke": "node bin/k6-debugger.mjs run examples/smoke.js",
     "lint": "echo \"(no linter configured yet)\"",
-    "prepublishOnly": "npm test"
+    "prepublishOnly": "npm run build && npm test"
   },
   "engines": {
     "node": ">=18.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "typescript": "^5.4.5"
   },
   "keywords": [
     "k6",

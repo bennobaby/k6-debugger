@@ -2,16 +2,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { collectDebugger } from './collectors/debugger.mjs';
-import { collectK6 } from './collectors/k6.mjs';
-import { compareRuns } from './compare.mjs';
-import { renderConsole } from './reporters/console.mjs';
-import { renderMarkdown } from './reporters/markdown.mjs';
-import { renderJson } from './reporters/json.mjs';
+import { collectDebugger } from './collectors/debugger.js';
+import { collectK6 } from './collectors/k6.js';
+import { compareRuns } from './compare.js';
+import { renderConsole } from './reporters/console.js';
+import { renderMarkdown } from './reporters/markdown.js';
+import { renderJson } from './reporters/json.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const RUN = path.resolve(HERE, '..', 'run.mjs');
-const REGISTER_URL = pathToFileURL(path.resolve(HERE, '..', 'register.mjs')).href;
+const RUN = path.resolve(HERE, '..', 'run.js');
+const REGISTER_URL = pathToFileURL(path.resolve(HERE, '..', 'register.js')).href;
 
 function k6Available() {
   const r = spawnSync('k6', ['version'], { encoding: 'utf8' });
@@ -26,7 +26,7 @@ export async function runParity({ script, tolerances = {}, outDir, env = {} }) {
   fs.mkdirSync(k6Dir, { recursive: true });
 
   console.log('[parity] running k6-debugger ...');
-  spawnSync(process.execPath, ['--import', REGISTER_URL, RUN, script], {
+  const dbgRun = spawnSync(process.execPath, ['--import', REGISTER_URL, RUN, script], {
     stdio: 'inherit',
     env: {
       ...process.env,
@@ -40,6 +40,7 @@ export async function runParity({ script, tolerances = {}, outDir, env = {} }) {
   });
 
   let k6Ran = false;
+  let k6Threw = false;
   if (k6Available()) {
     console.log('[parity] running real k6 ...');
     const r = spawnSync('k6', [
@@ -48,13 +49,17 @@ export async function runParity({ script, tolerances = {}, outDir, env = {} }) {
       '--out', `json=${path.join(k6Dir, 'metrics.jsonl')}`,
       script,
     ], { stdio: 'inherit', env: { ...process.env, ...env, K6_NO_USAGE_REPORT: 'true' } });
-    k6Ran = r.status === 0 || r.status === 99;
+
+    k6Ran = true;
+    k6Threw = r.status !== 0 && r.status !== 99;
   } else {
     console.warn('[parity] k6 binary not on PATH — skipping real run; report will be partial.');
   }
 
   const dbg = await collectDebugger(debuggerDir);
+  if (dbgRun.status !== 0) dbg.threwError = true;
   const k6 = k6Ran ? await collectK6(k6Dir) : { requests: [], checks: [], groupTree: [], threwError: false };
+  if (k6Threw) k6.threwError = true;
 
   const diff = compareRuns(dbg, k6, tolerances);
 

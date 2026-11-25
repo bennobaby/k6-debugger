@@ -1,10 +1,13 @@
-import './preload.mjs';
+import './preload.js';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import fs from 'node:fs';
-import { config } from './lib/config.mjs';
-import { EXIT_CODES, die, DebuggerError } from './lib/errors.mjs';
-import { bus, EVENTS } from './lib/obs-bus.mjs';
+import { config } from './lib/config.js';
+import { EXIT_CODES, die, DebuggerError } from './lib/errors.js';
+import { bus, EVENTS } from './lib/obs-bus.js';
+import { curlRequest } from './lib/curl-client.js';
+import { setHttpTransport } from './lib/http-transport.js';
+import { ReplayIndex, makeReplayCurl } from './replay/replayer.js';
 
 function resolveTarget() {
   const arg = process.argv[2] || process.env.K6_DEBUG_TARGET;
@@ -22,16 +25,6 @@ function resolveTarget() {
   return abs;
 }
 
-/**
- * Build the `data` object handed to the script's default(data) entry point.
- *
- * Resolution order:
- *   1. AUTH_TOKEN env  -> { authToken }
- *   2. K6_DEBUG_SETUP module exporting setup()/setupAuth()/default()
- *   3. nothing         -> {}
- *
- * This mirrors k6's setup() lifecycle without coupling to any project.
- */
 async function buildSetupData() {
   if (config.authToken) {
     console.log('[k6-debugger] using AUTH_TOKEN from env');
@@ -60,7 +53,7 @@ async function buildSetupData() {
     console.log(`[k6-debugger] calling setup from ${config.setupModule} ...`);
     try {
       const result = await fn();
-      // Allow returning a bare token string or a full data object.
+
       if (typeof result === 'string') return { authToken: result };
       return result || {};
     } catch (e) {
@@ -71,26 +64,55 @@ async function buildSetupData() {
   return {};
 }
 
+const REPLAY_HTTP_MODES = new Set(['mock', 'live', 'step']);
+
+function installReplayTransport() {
+  const mode = config.features.replay;
+  if (!REPLAY_HTTP_MODES.has(mode)) return;
+
+  if (!config.replayFile) {
+    die(
+      EXIT_CODES.USAGE,
+      'K6_DEBUG_REPLAY_FILE must point to a snapshot JSON file.',
+      'Pass the snapshot path to `k6-debugger replay`.',
+    );
+  }
+  if (!fs.existsSync(config.replayFile)) {
+    die(EXIT_CODES.USAGE, `Snapshot not found: ${config.replayFile}`, 'Check K6_DEBUG_REPLAY_FILE.');
+  }
+
+  let snapshot;
+  try {
+    snapshot = JSON.parse(fs.readFileSync(config.replayFile, 'utf8'));
+  } catch (e) {
+    die(EXIT_CODES.USAGE, `Failed to read snapshot: ${e.message}`, 'The file must be JSON written by --record.');
+  }
+
+  const index = new ReplayIndex(snapshot);
+  const liveFallback = mode === 'live' ? curlRequest : null;
+  setHttpTransport(makeReplayCurl({ index, mode, liveFallback }));
+  console.log(`[k6-debugger] replay mode=${mode} requests=${snapshot.requests?.length ?? 0} file=${config.replayFile}`);
+}
+
 async function bootstrapObservability() {
+  installReplayTransport();
   const { features } = config;
   const flushers = [];
   if (features.timeline) {
-    const { attach } = await import('./timeline/manager.mjs');
+    const { attach } = await import('./timeline/manager.js');
     flushers.push(attach(bus));
     console.log('[k6-debugger] timeline enabled');
   }
   if (features.tracing) {
-    const { attach } = await import('./tracing/tracer.mjs');
+    const { attach } = await import('./tracing/tracer.js');
     flushers.push(attach(bus));
     console.log('[k6-debugger] tracing enabled');
   }
   if (features.replay === 'record') {
-    const { attach } = await import('./replay/recorder.mjs');
+    const { attach } = await import('./replay/recorder.js');
     const flush = attach(bus, 'record');
     if (flush) flushers.push(flush);
     console.log('[k6-debugger] replay record enabled');
-  } else if (features.replay) {
-    console.log(`[k6-debugger] replay ${features.replay} active (file=${config.replayFile})`);
   }
 
   let flushed = false;
@@ -102,8 +124,7 @@ async function bootstrapObservability() {
       try { await f(); } catch (e) { console.warn('[k6-debugger] flush error:', e.message); }
     }
   }
-  // beforeExit can run async work (file writes + OTLP export); signals let a
-  // long run flush on Ctrl-C. 'exit' is a sync-only last resort.
+
   process.once('beforeExit', flushAll);
   for (const sig of ['SIGINT', 'SIGTERM']) {
     process.once(sig, async () => {
@@ -158,6 +179,10 @@ async function main() {
     await loadAndInvoke(target, data);
   } catch (e) {
     exitCode = e instanceof DebuggerError ? (e.code || EXIT_CODES.SCRIPT_THREW) : EXIT_CODES.SCRIPT_THREW;
+    if (!(e instanceof DebuggerError)) {
+      const message = e instanceof Error ? e.message : String(e);
+      bus.emit(EVENTS.SCRIPT_ERROR, { message, ts: Date.now() });
+    }
   } finally {
     await flush();
     if (exitCode) process.exit(exitCode);

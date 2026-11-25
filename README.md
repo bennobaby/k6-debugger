@@ -181,17 +181,20 @@ Every flag has an env-var equivalent (`K6_DEBUG_TIMELINE`, `K6_DEBUG_TRACE`, `K6
 ## How it works
 
 ```
-node --experimental-loader src/loader.mjs  src/run.mjs  your-script.js
+node --import dist/register.js  dist/run.js  your-script.js
         │                                      │
         │  ESM resolve hook                    │  orchestrator
         ▼                                      ▼
- k6, k6/http, k6/encoding, …  ──►  src/stubs/*   (compatible shims)
- real HTTP                    ──►  src/lib/curl-client.mjs (system curl)
+ k6, k6/http, k6/encoding, …  ──►  dist/stubs/*  (compiled from src/stubs/*.ts)
+ real HTTP                    ──►  dist/lib/http-transport.js → curl (system curl)
+ replay (mock|live|step)      ──►  same transport, installed before the script loads
         │
         └─ emits lifecycle events on a synchronous in-process bus
                  │
    timeline / tracing / replay subscribe; flush artifacts on exit
 ```
+
+Source is TypeScript under `src/`. `npm run build` (`tsc`) emits one ESM file per module into `dist/`.
 
 - **No script modification.** Imports are redirected by a Node ESM loader hook.
 - **Synchronous semantics preserved.** `http.get` blocks like in k6; `sleep` uses `Atomics.wait`.
@@ -213,7 +216,7 @@ WebSockets, gRPC, `k6/crypto` extras, real metrics aggregation, multi-VU/scenari
 import { compareRuns, formatWaterfall, buildTree } from 'k6-debugger';
 ```
 
-See [src/index.mjs](src/index.mjs) for the full surface.
+See [src/index.ts](src/index.ts) (compiled to `dist/index.js`) for the full surface.
 
 ---
 

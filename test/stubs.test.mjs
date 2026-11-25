@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import '../src/preload.mjs';
+import '../dist/preload.js';
 
-import http from '../src/stubs/k6-http.js';
-import { b64decode, b64encode } from '../src/stubs/k6-encoding.js';
-import { SharedArray } from '../src/stubs/k6-data.js';
-import { group, check, fail, randomSeed, _getRandomSeed } from '../src/stubs/k6.js';
-import { Counter, Gauge, Rate, Trend } from '../src/stubs/k6-metrics.js';
-import execDefault, { vu, scenario, instance, test as k6test } from '../src/stubs/k6-execution.js';
-import { parseHeaderBlock } from '../src/lib/headers.mjs';
-import { buildResponse } from '../src/lib/response.mjs';
-import { config } from '../src/lib/config.mjs';
+import http from '../dist/stubs/k6-http.js';
+import { b64decode, b64encode } from '../dist/stubs/k6-encoding.js';
+import { SharedArray } from '../dist/stubs/k6-data.js';
+import { group, check, fail, randomSeed, _getRandomSeed } from '../dist/stubs/k6.js';
+import { Counter, Gauge, Rate, Trend } from '../dist/stubs/k6-metrics.js';
+import execDefault, { vu, scenario, instance, test as k6test } from '../dist/stubs/k6-execution.js';
+import { parseHeaderBlock } from '../dist/lib/headers.js';
+import { buildResponse } from '../dist/lib/response.js';
+import { config } from '../dist/lib/config.js';
 
 test('k6/encoding: b64decode std', () => {
   assert.equal(b64decode('aGVsbG8='), 'hello');
@@ -166,7 +166,7 @@ test('preload: __ENV reads process.env', () => {
 });
 
 test('preload: open reads file contents', () => {
-  const url = new URL('../src/preload.mjs', import.meta.url);
+  const url = new URL('../dist/preload.js', import.meta.url);
   const content = globalThis.open(url.href);
   assert.ok(content.includes('globalThis.__ENV'));
 });

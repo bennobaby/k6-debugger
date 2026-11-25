@@ -1,5 +1,3 @@
-// Demonstrates group nesting + a dependent multi-step chain (the pattern k6-debugger
-// tracing + replay shine on). Uses public httpbin endpoints.
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
 
