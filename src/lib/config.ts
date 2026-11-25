@@ -16,8 +16,7 @@ function replayMode() {
 }
 
 export const config = Object.freeze({
-  // Optional project/environment labels — surfaced to scripts via process.env.
-  // No hardcoded defaults: this tool is project-agnostic.
+
   project: process.env.K6_DEBUG_PROJECT || process.env.PROJECT || null,
   environment: process.env.K6_DEBUG_ENV || process.env.ENVIRONMENT || null,
 
@@ -25,20 +24,15 @@ export const config = Object.freeze({
   noSleep: flag('DEBUG_NO_SLEEP'),
   authToken: process.env.AUTH_TOKEN || null,
 
-  // Optional path to a user module that bootstraps per-iteration data.
-  // Module must export `setup()` (preferred) or `setupAuth()` returning data
-  // (or a token) handed to the script's default(data) entry point.
   setupModule: process.env.K6_DEBUG_SETUP || null,
 
   curlMaxBuffer: parseInt(process.env.K6_DEBUG_CURL_MAX_BUFFER, 10) || 64 * 1024 * 1024,
   defaultTimeoutMs: parseInt(process.env.K6_DEBUG_DEFAULT_TIMEOUT_MS, 10) || 60000,
 
-  // k6 follows redirects by default (max 10). Override per-request via params.redirects.
   maxRedirects: Number.isFinite(parseInt(process.env.K6_DEBUG_MAX_REDIRECTS, 10))
     ? parseInt(process.env.K6_DEBUG_MAX_REDIRECTS, 10)
     : 10,
-  // Skip TLS verification (self-signed / internal hosts). Mirrors k6's
-  // insecureSkipTLSVerify option / K6_INSECURE_SKIP_TLS_VERIFY env.
+
   insecureTLS: flag('K6_DEBUG_INSECURE') || flag('K6_INSECURE_SKIP_TLS_VERIFY'),
 
   outDir: path.resolve(process.cwd(), process.env.K6_DEBUG_OUT || '.artifacts'),

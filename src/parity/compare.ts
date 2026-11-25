@@ -1,5 +1,5 @@
-import { normalizeHeaders, bodyShape } from './normalize.mjs';
-import { defaults } from './tolerances.mjs';
+import { normalizeHeaders, bodyShape } from './normalize.js';
+import { defaults } from './tolerances.js';
 
 export function compareRuns(dbg, k6, tol = {}) {
   const t = { ...defaults, ...tol };
@@ -30,8 +30,6 @@ export function compareRuns(dbg, k6, tol = {}) {
     if (a.status !== b.status) push('fail', 'http.status', `${tag} ${a.status} vs ${b.status}`);
     else push('ok', 'http.status', `${tag} ${a.status}`);
 
-    // k6's `--out json` emits metric points only — no response headers or body.
-    // When that data is absent on the k6 side, skip rather than flag a false diff.
     if (b.response?.headers == null) {
       push('skip', 'http.header', `${tag} k6 JSON output carries no response headers`);
     } else {

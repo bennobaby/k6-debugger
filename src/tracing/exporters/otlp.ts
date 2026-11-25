@@ -4,8 +4,6 @@ function traceIdFromSession(sessionId) {
   return crypto.createHash('sha1').update(sessionId).digest('hex').slice(0, 32);
 }
 
-// OTLP/JSON requires spanId = 16 hex chars (8 bytes). Our internal ids look like
-// "req_ab12cd34" — not valid hex — so collectors reject them. Hash to 16 hex.
 function spanIdFrom(id) {
   if (!id) return '';
   return crypto.createHash('sha1').update(String(id)).digest('hex').slice(0, 16);

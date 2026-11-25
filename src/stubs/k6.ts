@@ -1,5 +1,5 @@
-import { config } from '../lib/config.mjs';
-import { bus, EVENTS } from '../lib/obs-bus.mjs';
+import { config } from '../lib/config.js';
+import { bus, EVENTS } from '../lib/obs-bus.js';
 
 const groupStack = [];
 
@@ -27,7 +27,7 @@ export function group(name, fn) {
     finish();
     throw e;
   }
-  // Defer span-end until an async body settles so timing/nesting stay accurate.
+
   if (result && typeof result.then === 'function') {
     return result.then(
       (v) => { finish(); return v; },
@@ -72,8 +72,6 @@ export function fail(message) {
   throw new Error(`k6 fail(): ${message ?? ''}`);
 }
 
-// Seeded PRNG so randomSeed() makes Math.random() deterministic across runs,
-// matching k6's randomSeed() behavior (needed for deterministic replay).
 function mulberry32(seed) {
   let a = seed >>> 0;
   return function next() {

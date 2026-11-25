@@ -5,8 +5,8 @@
       "type": "node",
       "request": "launch",
       "name": "k6-debugger: run (with observability)",
-      "runtimeArgs": ["--import", "./src/register.mjs"],
-      "program": "${workspaceFolder}/src/run.mjs",
+      "runtimeArgs": ["--import", "./dist/register.js"],
+      "program": "${workspaceFolder}/dist/run.js",
       "args": ["${input:script}"],
       "cwd": "${workspaceFolder}",
       "env": {
@@ -24,8 +24,8 @@
       "type": "node",
       "request": "launch",
       "name": "k6-debugger: replay snapshot (mock)",
-      "runtimeArgs": ["--import", "./src/register.mjs"],
-      "program": "${workspaceFolder}/src/run.mjs",
+      "runtimeArgs": ["--import", "./dist/register.js"],
+      "program": "${workspaceFolder}/dist/run.js",
       "args": ["${input:replayTarget}"],
       "cwd": "${workspaceFolder}",
       "env": {

@@ -23,5 +23,6 @@ export const EVENTS = Object.freeze({
   SPAN_END: 'span.end',
   CHECK: 'check',
   SLEEP: 'sleep',
+  SCRIPT_ERROR: 'script.error',
   SESSION_END: 'session.end',
 });

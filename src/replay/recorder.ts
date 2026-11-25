@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { config } from '../lib/config.mjs';
-import { EVENTS } from '../lib/obs-bus.mjs';
-import { makeSnapshot } from './schema.mjs';
+import { config } from '../lib/config.js';
+import { EVENTS } from '../lib/obs-bus.js';
+import { makeSnapshot } from './schema.js';
 
 const REDACT_HEADERS = new Set([
   'authorization', 'cookie', 'set-cookie', 'x-api-key', 'proxy-authorization',
@@ -34,6 +34,11 @@ export function attach(bus, mode) {
   const order = [];
   const spans = [];
   const checks = [];
+  let scriptError = null;
+
+  bus.on(EVENTS.SCRIPT_ERROR, (e) => {
+    scriptError = e?.message || String(e);
+  });
 
   bus.on(EVENTS.HTTP_START, (e) => {
     if (!requests.has(e.requestId)) order.push(e.requestId);
@@ -88,6 +93,7 @@ export function attach(bus, mode) {
       requests: order.map((id) => requests.get(id)).filter(Boolean),
       spans,
       checks,
+      error: scriptError,
     });
     fs.mkdirSync(config.outDir, { recursive: true });
     const file = path.join(config.outDir, `snapshot-${Date.now()}.json`);

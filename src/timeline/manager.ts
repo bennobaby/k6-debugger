@@ -1,17 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { config } from '../lib/config.mjs';
-import { EVENTS } from '../lib/obs-bus.mjs';
-import { TimelineStore } from './storage.mjs';
-import { formatWaterfall, toDevtoolsJson } from './formatter.mjs';
+import { config } from '../lib/config.js';
+import { EVENTS } from '../lib/obs-bus.js';
+import { TimelineStore } from './storage.js';
+import { formatWaterfall, toDevtoolsJson } from './formatter.js';
 
 export function attach(bus) {
   const store = new TimelineStore({
     outFile: path.join(config.outDir, 'timeline.jsonl'),
   });
 
-  // Exposed for live inspection while paused at a breakpoint:
-  //   globalThis.__timeline.dump()
   globalThis.__timeline = { store, dump: () => console.log(formatWaterfall(store.all())) };
 
   bus.on(EVENTS.HTTP_START, (e) => {

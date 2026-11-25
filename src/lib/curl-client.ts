@@ -3,10 +3,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { config } from './config.mjs';
-import { parseHeaderBlock } from './headers.mjs';
-import { buildResponse } from './response.mjs';
-import { bus, EVENTS } from './obs-bus.mjs';
+import { config } from './config.js';
+import { parseHeaderBlock } from './headers.js';
+import { buildResponse } from './response.js';
+import { bus, EVENTS } from './obs-bus.js';
 
 const TIMING_FMT =
   '%{http_code}\n%{time_namelookup}\n%{time_connect}\n%{time_appconnect}\n' +
@@ -26,13 +26,12 @@ function headerArgs(headers) {
 
 const DURATION_UNITS = { ms: 1, s: 1000, m: 60000, h: 3600000 };
 
-// Parse a k6 timeout: number (ms) or duration string ("30s", "1m30s", "100ms").
 function parseDurationMs(raw) {
   if (typeof raw === 'number') return raw;
   if (typeof raw !== 'string') return NaN;
   const s = raw.trim();
   if (s === '') return NaN;
-  if (/^\d+(\.\d+)?$/.test(s)) return parseFloat(s); // bare number => milliseconds
+  if (/^\d+(\.\d+)?$/.test(s)) return parseFloat(s);
   const re = /(\d+(?:\.\d+)?)(ms|s|m|h)/g;
   let m;
   let total = 0;
@@ -48,10 +47,9 @@ function resolveTimeoutSeconds(params) {
   const raw = params?.timeout ?? config.defaultTimeoutMs;
   const ms = parseDurationMs(raw);
   if (!Number.isFinite(ms) || ms <= 0) return null;
-  return ms / 1000; // fractional seconds — curl --max-time accepts decimals
+  return ms / 1000;
 }
 
-// Brand set by http.file() so an object body can be detected as a multipart upload.
 export const FILE_BRAND = '__k6File';
 function isFileField(v) {
   return v != null && typeof v === 'object' && v[FILE_BRAND] === true;
@@ -66,11 +64,6 @@ function fileBytes(data) {
   return Buffer.from(String(data), 'utf8');
 }
 
-// Build curl body args the way k6 encodes a request body:
-//   string                       -> sent as-is
-//   object with http.file fields -> multipart/form-data (-F)
-//   plain object                 -> application/x-www-form-urlencoded
-// Returns curl args, the default Content-Type (or null), and temp files to clean up.
 function buildBodyArgs(body) {
   if (body == null || body === '') return { args: [], contentType: null, files: [] };
 
@@ -98,7 +91,7 @@ function buildBodyArgs(body) {
           args.push('-F', `${k}=${v == null ? '' : String(v)}`);
         }
       }
-      // curl sets multipart/form-data with its own boundary — leave Content-Type unset.
+
       return { args, contentType: null, files };
     }
 
@@ -119,8 +112,6 @@ function hasHeader(headers, name) {
   return Object.keys(headers || {}).some((k) => k.toLowerCase() === lower);
 }
 
-// One Netscape cookie jar shared across every request in this process so server
-// Set-Cookie persists to later requests (login -> authenticated calls), like k6.
 let cookieJarFile = null;
 export function cookieJarPath() {
   if (!cookieJarFile) {
@@ -131,7 +122,6 @@ export function cookieJarPath() {
   return cookieJarFile;
 }
 
-// Manual cookie control backing http.cookieJar(). Writes Netscape lines curl reads.
 export function setCookie(url, name, value, opts = {}) {
   let host = '';
   let secure = false;
@@ -225,22 +215,19 @@ export function curlRequest(method, url, body, params = {}) {
 
   const args = [
     '-sS',
-    '--compressed',     // request + transparently decompress gzip/deflate, like k6
-    '-b', jar, '-c', jar, // share cookies across requests, like k6's cookie jar
+    '--compressed',
+    '-b', jar, '-c', jar,
     '-o', bodyFile,
     '-D', headerFile,
     '-w', TIMING_FMT,
   ];
 
-  // HEAD must use --head; `-X HEAD` makes curl wait for a body the server never
-  // sends, hanging until --max-time. With --head the headers still go to -D.
   if (upperMethod === 'HEAD') {
     args.push('--head');
   } else {
     args.push('-X', upperMethod);
   }
 
-  // Follow redirects like k6 (default 10); params.redirects can lower or disable.
   const maxRedirects = params.redirects != null ? Number(params.redirects) : config.maxRedirects;
   if (Number.isFinite(maxRedirects) && maxRedirects > 0) {
     args.push('-L', '--max-redirs', String(maxRedirects));
@@ -250,7 +237,6 @@ export function curlRequest(method, url, body, params = {}) {
 
   args.push(...headerArgs(params.headers));
 
-  // Apply k6's default Content-Type for object bodies unless the caller set one.
   if (contentType && !hasHeader(params.headers, 'content-type')) {
     args.push('-H', `Content-Type: ${contentType}`);
   }
@@ -279,7 +265,7 @@ export function curlRequest(method, url, body, params = {}) {
   }
 
   const durationMs = Date.now() - start;
-  // --head writes the header block to -o; a HEAD response has no body in k6.
+
   const bodyText = upperMethod === 'HEAD' ? '' : safeRead(bodyFile);
   const headerText = safeRead(headerFile);
   const { headers } = parseHeaderBlock(headerText);

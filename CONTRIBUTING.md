@@ -43,7 +43,7 @@ Open an issue at https://github.com/bennobaby/k6-debugger/issues with:
 
 No linter is configured. Follow the existing style:
 
-- ESM throughout (`.mjs` for source, `.js` for k6 stubs)
+- TypeScript in `src/` (`tsc` emits ESM into `dist/*.js`). The published bin stays `bin/k6-debugger.mjs` and loads `dist/cli.js`. The debug launch config uses `node --import dist/register.js`.
 - 2-space indent
 - Comments explain *why*, not *what*
 - Prefer small, focused modules

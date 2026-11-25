@@ -1,5 +1,5 @@
-import { buildResponse } from '../lib/response.mjs';
-import { bus, EVENTS } from '../lib/obs-bus.mjs';
+import { buildResponse } from '../lib/response.js';
+import { bus, EVENTS } from '../lib/obs-bus.js';
 
 export class ReplayIndex {
   constructor(snapshot) {
@@ -19,7 +19,7 @@ export class ReplayIndex {
     const bucket = this.byKey.get(key);
     if (!bucket || !bucket.length) return null;
     const i = this.cursor.get(key) || 0;
-    if (i >= bucket.length) return null; // exhausted — treat as a miss, don't replay stale record
+    if (i >= bucket.length) return null;
     this.cursor.set(key, i + 1);
     return bucket[i];
   }
